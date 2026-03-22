@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reciter</title>
 
-<!-- iPhone App Icon -->
 <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJYAAACWCAMAAADyQ0UqAAAAA1BMVEUAAACnej3aAAAASElEQVR4nO3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4G8G0AABqzWqvwAAAABJRU5ErkJggg==">
 
 <style>
@@ -15,7 +14,6 @@ body {
     background: white;
 }
 
-/* Header */
 .header {
     text-align: center;
     padding: 15px 10px 5px;
@@ -29,13 +27,17 @@ body {
     margin-top: 5px;
 }
 
-/* Dropdown */
+/* 放大下拉框 */
 .select-box {
     text-align: center;
-    margin: 10px;
+    margin: 15px;
+}
+select {
+    font-size: 18px;
+    padding: 8px 12px;
 }
 
-/* Table */
+/* 表格 */
 table {
     width: 100%;
     border-collapse: collapse;
@@ -43,15 +45,14 @@ table {
 }
 th, td {
     border: 1px solid #ddd;
-    padding: 6px;
+    padding: 8px;
     text-align: center;
-    font-size: 14px;
 }
 th {
     background: #f5f5f5;
 }
 
-/* Bottom buttons */
+/* 底部按钮 */
 .bottom-bar {
     position: fixed;
     bottom: 0;
@@ -67,11 +68,16 @@ th {
     font-weight: bold;
     cursor: pointer;
 }
-.enter { background: #ff6fa5; }
+
+/* 修改颜色 */
 .fix { background: #ff8c42; }
 .fix.active { background: #ffd1a3; color: black; }
-.order { background: #28a745; }
+
+/* 青绿色 */
+.order { background: #20c997; }
+
 .export { background: #777; }
+
 </style>
 </head>
 
@@ -101,7 +107,6 @@ th {
 </table>
 
 <div class="bottom-bar">
-    <div class="btn enter" onclick="enterWord()">Enter</div>
     <div class="btn fix" id="fixBtn" onclick="toggleFix()">Fix</div>
     <div class="btn order" onclick="orderWords()">Order</div>
     <div class="btn export" onclick="exportData()">Export</div>
@@ -117,18 +122,18 @@ for (let i = 1; i <= 12; i++) {
     monthSelect.appendChild(option);
 }
 
-// 当前时间
+// 时间
 function updateTime() {
     document.getElementById("time").innerText = new Date().toLocaleString();
 }
 setInterval(updateTime, 1000);
 updateTime();
 
-// 数据存储
+// 数据
 let data = JSON.parse(localStorage.getItem("reciterData")) || {};
 let fixMode = false;
 
-// 初始化表格
+// 渲染表格
 function renderTable() {
     const tbody = document.querySelector("#table tbody");
     tbody.innerHTML = "";
@@ -159,33 +164,13 @@ function renderTable() {
     }
 }
 
-// Enter
-function enterWord() {
-    let input = prompt("输入单词（可含释义）");
-    if (!input) return;
-
-    let today = new Date();
-    let key = `2026-${today.getMonth()+1}-${today.getDate()}`;
-
-    if (!data[key]) data[key] = ["", "", ""];
-
-    for (let i = 0; i < 3; i++) {
-        if (!data[key][i]) {
-            data[key][i] = input;
-            break;
-        }
-    }
-
-    save();
-}
-
-// Fix
+// Fix模式
 function toggleFix() {
     fixMode = !fixMode;
     document.getElementById("fixBtn").classList.toggle("active");
 }
 
-// 修改
+// 修改单词
 function editCell(key, index) {
     if (!fixMode) return;
 
@@ -197,30 +182,43 @@ function editCell(key, index) {
     }
 }
 
-// Order
+// ⭐⭐⭐核心优化：完整重排⭐⭐⭐
 function orderWords() {
     let selected = monthSelect.value;
     let words = [];
 
+    // 收集当前范围所有单词
     for (let key in data) {
         if (selected !== "All" && !key.startsWith(`2026-${selected}-`)) continue;
         words.push(...data[key]);
     }
 
-    words = words.filter(w => w).sort();
+    // 过滤空值 + 排序
+    words = words.filter(w => w && w.trim() !== "")
+                 .sort((a, b) => a.localeCompare(b));
 
-    let i = 0;
-    for (let key in data) {
-        if (selected !== "All" && !key.startsWith(`2026-${selected}-`)) continue;
-        for (let j = 0; j < 3; j++) {
-            data[key][j] = words[i++] || "";
+    let index = 0;
+
+    // 从第一行开始重新填充（关键点）
+    for (let m = 1; m <= 12; m++) {
+        if (selected !== "All" && Number(selected) !== m) continue;
+
+        for (let d = 1; d <= 31; d++) {
+            let key = `2026-${m}-${d}`;
+            data[key] = ["", "", ""];
+
+            for (let j = 0; j < 3; j++) {
+                if (index < words.length) {
+                    data[key][j] = words[index++];
+                }
+            }
         }
     }
 
     save();
 }
 
-// Export
+// 导出
 function exportData() {
     let blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
     let a = document.createElement("a");
