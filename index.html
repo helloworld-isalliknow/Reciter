@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -77,8 +77,16 @@ th {
 
 .fix { background: #ff8c42; }
 .fix.active { background: #ffd1a3; color: black; }
-.order { background: #20c997; }
+
+.color { background: #20c997; }
+.color.active { background: #bfefff; color: black; }
+
 .export { background: #777; }
+
+/* ⭐浅蓝色标记 */
+.colored {
+    background-color: #eaf6ff !important;
+}
 </style>
 </head>
 
@@ -109,7 +117,10 @@ th {
 
 <div class="bottom-bar">
     <div class="btn fix" id="fixBtn" onclick="toggleFix()">Fix</div>
-    <div class="btn order" onclick="orderWords()">Order</div>
+
+    <!-- ⭐Order改为Color -->
+    <div class="btn color" id="colorBtn" onclick="toggleColorMode()">Color</div>
+
     <div class="btn export" onclick="exportData()">Export</div>
 </div>
 
@@ -132,7 +143,10 @@ updateTime();
 
 // 数据
 let data = JSON.parse(localStorage.getItem("reciterData")) || {};
+let coloredCells = JSON.parse(localStorage.getItem("coloredCells")) || {};
+
 let fixMode = false;
+let colorMode = false;
 
 // 渲染表格
 function renderTable() {
@@ -156,7 +170,15 @@ function renderTable() {
             for (let i = 0; i < 3; i++) {
                 let cell = document.createElement("td");
                 cell.innerText = words[i];
-                cell.onclick = () => editCell(key, i);
+
+                // ⭐颜色状态恢复
+                let colorKey = `${key}-${i}`;
+                if (coloredCells[colorKey]) {
+                    cell.classList.add("colored");
+                }
+
+                cell.onclick = () => handleCellClick(key, i, cell);
+
                 row.appendChild(cell);
             }
 
@@ -171,49 +193,45 @@ function toggleFix() {
     document.getElementById("fixBtn").classList.toggle("active");
 }
 
+// ⭐Color模式
+function toggleColorMode() {
+    colorMode = !colorMode;
+    document.getElementById("colorBtn").classList.toggle("active");
+}
+
+// ⭐统一点击逻辑
+function handleCellClick(key, index, cell) {
+
+    // Fix模式
+    if (fixMode) {
+        editCell(key, index);
+        return;
+    }
+
+    // Color模式
+    if (colorMode) {
+        let colorKey = `${key}-${index}`;
+
+        if (coloredCells[colorKey]) {
+            delete coloredCells[colorKey];
+            cell.classList.remove("colored");
+        } else {
+            coloredCells[colorKey] = true;
+            cell.classList.add("colored");
+        }
+
+        localStorage.setItem("coloredCells", JSON.stringify(coloredCells));
+    }
+}
+
 // 修改
 function editCell(key, index) {
-    if (!fixMode) return;
-
     let newWord = prompt("修改单词", data[key]?.[index] || "");
     if (newWord !== null) {
         if (!data[key]) data[key] = ["", "", ""];
         data[key][index] = newWord;
         save();
     }
-}
-
-// 排序（完整重排）
-function orderWords() {
-    let selected = monthSelect.value;
-    let words = [];
-
-    for (let key in data) {
-        if (selected !== "All" && !key.startsWith(`2026-${selected}-`)) continue;
-        words.push(...data[key]);
-    }
-
-    words = words.filter(w => w && w.trim() !== "")
-                 .sort((a, b) => a.localeCompare(b));
-
-    let index = 0;
-
-    for (let m = 1; m <= 12; m++) {
-        if (selected !== "All" && Number(selected) !== m) continue;
-
-        for (let d = 1; d <= 31; d++) {
-            let key = `2026-${m}-${d}`;
-            data[key] = ["", "", ""];
-
-            for (let j = 0; j < 3; j++) {
-                if (index < words.length) {
-                    data[key][j] = words[index++];
-                }
-            }
-        }
-    }
-
-    save();
 }
 
 // 导出
